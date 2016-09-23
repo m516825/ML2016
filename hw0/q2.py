@@ -1,7 +1,9 @@
 from PIL import Image
+import sys
 
 def main():
-	img = Image.open('./Lena.png')
+	img_path = sys.argv[1]
+	img = Image.open(img_path)
 	row, col = img.size
 
 	img_out = img.copy()
