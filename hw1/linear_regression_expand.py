@@ -8,8 +8,8 @@ import math
 def parse_args():
 	
 	parser = argparse.ArgumentParser()
-	parser.add_argument('--iteration', default=10000, type=int)
-	parser.add_argument('--learning_rate', default=0.000001, type=float)
+	parser.add_argument('--iteration', default=15000, type=int)
+	parser.add_argument('--learning_rate', default=0.0000001, type=float)
 	parser.add_argument('--train_data', default='./data/train.csv', type=str)
 	parser.add_argument('--test_data', default='./data/test_X.csv', type=str)
 	parser.add_argument('--output_file', default='./output.csv', type=str)
@@ -127,7 +127,7 @@ def calculate_error(w, b, x_dat, y_dat):
 def create_val_data(x_dat, y_dat):
 
 	size = len(x_dat)
-	val_size = int(size/10)
+	val_size = int(size/100)
 	val_x = x_dat[-val_size:]
 	val_y = y_dat[-val_size:]
 	x_dat = x_dat[:-val_size]
@@ -135,18 +135,36 @@ def create_val_data(x_dat, y_dat):
 
 	return x_dat, y_dat, val_x, val_y
 
+def expand_train(x_dat):
+
+	size = len(x_dat[0])
+	for i, dat in enumerate(x_dat):
+		tmp = []
+		p_dat = dat[-18:]
+		for i_1 in range(0, 18-1):
+			for i_2 in range(i_1+1, 18):
+				tmp.append(p_dat[i_1]*p_dat[i_2]*0.01)
+		tmp = np.array(tmp)
+		x_dat[i] = np.append(x_dat[i], tmp)
+		x_dat[i] = np.append(x_dat[i], p_dat*p_dat*0.01)
+
+	return x_dat
+
+
 def train(args, x_dat, y_dat):
 
+	x_dat = expand_train(x_dat)
 	x_dat, y_dat, val_x, val_y = create_val_data(x_dat, y_dat)
 
 	train_size = len(x_dat)
 	f_size = len(x_dat[0])
-	w = np.random.normal(-.01, .01, (f_size))
+	print f_size
+	w = np.random.normal(-.001, .001, (f_size))
 	b = 0.
 	gradsq_w = np.array([1.]*f_size)
 	gradsq_b = 1.
 	cost = 0.
-	Lambda = 0.1
+	Lambda = 1
 	eta = args.learning_rate
 
 	pre_eout = float('Inf')
@@ -179,6 +197,7 @@ def train(args, x_dat, y_dat):
 
 def test(w, b, t_x_dat):
 
+	t_x_dat = expand_train(t_x_dat)
 	ans = []
 	for dat in t_x_dat:
 		a = np.dot(w.T, dat) + b if np.dot(w.T, dat) + b > 0. else 0.
