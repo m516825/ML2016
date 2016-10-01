@@ -9,7 +9,7 @@ def parse_args():
 	
 	parser = argparse.ArgumentParser()
 	parser.add_argument('--iteration', default=10000, type=int)
-	parser.add_argument('--learning_rate', default=0.00001, type=float)
+	parser.add_argument('--learning_rate', default=0.000001, type=float)
 	parser.add_argument('--train_data', default='./data/train.csv', type=str)
 	parser.add_argument('--test_data', default='./data/test_X.csv', type=str)
 	parser.add_argument('--output_file', default='./output.csv', type=str)
