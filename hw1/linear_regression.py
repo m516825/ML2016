@@ -178,9 +178,10 @@ def train(args, x_dat, y_dat):
 	return w, b
 
 def test(w, b, t_x_dat):
+
 	ans = []
 	for dat in t_x_dat:
-		a = np.dot(w.T, dat) + b
+		a = np.dot(w.T, dat) + b if np.dot(w.T, dat) + b > 0. else 0.
 		ans.append(float(a))
 
 	return ans
