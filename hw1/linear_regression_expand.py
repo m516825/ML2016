@@ -119,7 +119,7 @@ def calculate_error(w, b, x_dat, y_dat):
 	size = len(x_dat)
 	error = 0.
 	for i in range(size):
-		a = np.dot(w.T, x_dat[i]) + b
+		a = np.dot(x_dat[i], w.T) + b
 		error += (a - y_dat[i])**2
 	error /= float(size)
 
@@ -177,7 +177,7 @@ def train(args, x_dat, y_dat):
 		v_b = 0.
 		cost = 0.
 		for i, dat in enumerate(x_dat):
-			diff = np.dot(w.T, dat) + b - y_dat[i]
+			diff = np.dot(dat, w.T) + b - y_dat[i]
 			cost += 0.5 * diff * diff + 0.5 * Lambda * np.sum(w**2)
 
 			# momentum
@@ -216,7 +216,7 @@ def test(w, b, t_x_dat):
 	t_x_dat = expand_train(t_x_dat)
 	ans = []
 	for dat in t_x_dat:
-		a = np.dot(w.T, dat) + b if np.dot(w.T, dat) + b > 0. else 0.
+		a = np.dot(dat, w.T) + b if np.dot(dat, w.T) + b > 0. else 0.
 		ans.append(float(a))
 
 	return ans
