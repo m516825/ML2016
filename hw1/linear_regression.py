@@ -22,7 +22,7 @@ def make_train_pair(seq_feature):
 	y_dat = []
 	for i, f in enumerate(seq_feature):
 		tmp = np.array([])
-		if i >= 9:
+		if i%(24*20) >= 9:
 			for seq in range(i-9, i):
 				tmp = np.append(tmp, seq_feature[seq])
 			x_dat.append(tmp)
@@ -141,7 +141,7 @@ def train(args, x_dat, y_dat):
 
 	train_size = len(x_dat)
 	f_size = len(x_dat[0])
-	w = np.random.normal(-.01, .01, (f_size))
+	w = np.random.uniform(-.01, .01, (f_size))
 	b = 0.
 	gradsq_w = np.array([1.]*f_size)
 	gradsq_b = 1.

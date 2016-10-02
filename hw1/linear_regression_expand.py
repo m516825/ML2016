@@ -8,8 +8,9 @@ import math
 def parse_args():
 	
 	parser = argparse.ArgumentParser()
-	parser.add_argument('--iteration', default=15000, type=int)
+	parser.add_argument('--iteration', default=10000, type=int)
 	parser.add_argument('--learning_rate', default=0.0000001, type=float)
+	parser.add_argument('--momentum', default=1, type=int)
 	parser.add_argument('--train_data', default='./data/train.csv', type=str)
 	parser.add_argument('--test_data', default='./data/test_X.csv', type=str)
 	parser.add_argument('--output_file', default='./output.csv', type=str)
@@ -22,7 +23,7 @@ def make_train_pair(seq_feature):
 	y_dat = []
 	for i, f in enumerate(seq_feature):
 		tmp = np.array([])
-		if i >= 9:
+		if i%(24*20) >= 9:
 			for seq in range(i-9, i):
 				tmp = np.append(tmp, seq_feature[seq])
 			x_dat.append(tmp)
@@ -127,7 +128,7 @@ def calculate_error(w, b, x_dat, y_dat):
 def create_val_data(x_dat, y_dat):
 
 	size = len(x_dat)
-	val_size = int(size/100)
+	val_size = int(size/10)
 	val_x = x_dat[-val_size:]
 	val_y = y_dat[-val_size:]
 	x_dat = x_dat[:-val_size]
@@ -143,10 +144,10 @@ def expand_train(x_dat):
 		p_dat = dat[-18:]
 		for i_1 in range(0, 18-1):
 			for i_2 in range(i_1+1, 18):
-				tmp.append(p_dat[i_1]*p_dat[i_2]*0.01)
+				tmp.append(p_dat[i_1]*p_dat[i_2]*0.001)
 		tmp = np.array(tmp)
 		x_dat[i] = np.append(x_dat[i], tmp)
-		x_dat[i] = np.append(x_dat[i], p_dat*p_dat*0.01)
+		x_dat[i] = np.append(x_dat[i], p_dat*p_dat*0.001)
 
 	return x_dat
 
@@ -159,27 +160,40 @@ def train(args, x_dat, y_dat):
 	train_size = len(x_dat)
 	f_size = len(x_dat[0])
 	print f_size
-	w = np.random.normal(-.001, .001, (f_size))
+	w = np.random.uniform(-.01, .01, (f_size))
 	b = 0.
 	gradsq_w = np.array([1.]*f_size)
 	gradsq_b = 1.
+	m_lambda = 0.8
 	cost = 0.
-	Lambda = 1
+	Lambda = 0.01
 	eta = args.learning_rate
+	viol = 0
 
 	pre_eout = float('Inf')
 
 	for iters in range(args.iteration):
+		v_w = 0.
+		v_b = 0.
 		cost = 0.
 		for i, dat in enumerate(x_dat):
 			diff = np.dot(w.T, dat) + b - y_dat[i]
 			cost += 0.5 * diff * diff + 0.5 * Lambda * np.sum(w**2)
 
-			w -= eta * (diff * dat + Lambda * w)/np.sqrt(gradsq_w)
-			b -= eta * diff / math.sqrt(gradsq_b)
+			# momentum
+			if args.momentum == 1:
+				v_w = m_lambda * v_w - eta * (diff * dat + Lambda * w) 
+				v_b = m_lambda * v_b - eta * diff 
+				w += v_w
+				b += v_b
 
-			gradsq_w += eta * (diff * dat + Lambda * w) * eta * (diff * dat + Lambda * w)
-			gradsq_b += eta * diff * eta * diff
+			# adagrad
+			else:
+				w -= eta * (diff * dat + Lambda * w) / np.sqrt(gradsq_w)
+				b -= eta * diff / math.sqrt(gradsq_b)
+
+				gradsq_w += eta * (diff * dat + Lambda * w) * eta * (diff * dat + Lambda * w)
+				gradsq_b += eta * diff * eta * diff
 
 		ein = calculate_error(w, b, x_dat, y_dat)
 		eout = calculate_error(w, b, val_x, val_y)
@@ -187,8 +201,10 @@ def train(args, x_dat, y_dat):
 
 		if eout < pre_eout:
 			pre_eout = eout
+			viol = 0
 		else:
-			if iters > 300:
+			viol += 1
+			if iters > 300 and viol > 5:
 				break
 			else:
 				pre_eout = eout
