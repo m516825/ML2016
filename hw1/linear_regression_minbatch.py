@@ -177,7 +177,7 @@ def train(args, x_dat, y_dat):
 
 	x_dat = expand_train(x_dat)
 	x_dat, y_dat, val_x, val_y = create_val_data(x_dat, y_dat)
-	batch_x, batch_y, batch_number = make_batch(x_dat, y_dat, 10)
+	batch_x, batch_y, batch_number = make_batch(x_dat, y_dat, 5)
 
 	train_size = len(x_dat)
 	f_size = len(x_dat[0])
@@ -186,7 +186,6 @@ def train(args, x_dat, y_dat):
 	b = 0.
 	gradsq_w = np.array([1.]*f_size)
 	gradsq_b = 1.
-	m_lambda = 0.8
 	cost = 0.
 	Lambda = 1
 	eta = args.learning_rate
@@ -195,12 +194,11 @@ def train(args, x_dat, y_dat):
 	pre_eout = float('Inf')
 
 	for iters in range(args.iteration):
-		v_w = 0.
-		v_b = 0.
 		cost = 0.
 		for i, b_dat in enumerate(batch_x):
 			diff = np.dot(b_dat, w.T).reshape((len(b_dat), 1)) + b - batch_y[i]
 			cost += np.sum(0.5 * diff * diff) + 0.5 * Lambda * np.sum(w**2) * len(b_dat)
+
 			w -= eta * (np.sum(diff * b_dat, axis=0) + Lambda * w * len(b_dat)) / np.sqrt(gradsq_w)
 			b -= eta * np.sum(diff) / math.sqrt(gradsq_b)
 
