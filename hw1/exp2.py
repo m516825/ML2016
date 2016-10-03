@@ -9,7 +9,8 @@ def parse_args():
 	
 	parser = argparse.ArgumentParser()
 	parser.add_argument('--iteration', default=10000, type=int)
-	parser.add_argument('--learning_rate', default=0.000001, type=float)
+	parser.add_argument('--learning_rate', default=0.00000005, type=float)
+	parser.add_argument('--momentum', default=1, type=int)
 	parser.add_argument('--train_data', default='./data/train.csv', type=str)
 	parser.add_argument('--test_data', default='./data/test_X.csv', type=str)
 	parser.add_argument('--output_file', default='./output.csv', type=str)
@@ -118,7 +119,7 @@ def calculate_error(w, b, x_dat, y_dat):
 	size = len(x_dat)
 	error = 0.
 	for i in range(size):
-		a = np.dot(w.T, x_dat[i]) + b
+		a = np.dot(x_dat[i], w.T) + b
 		error += (a - y_dat[i])**2
 	error /= float(size)
 
@@ -135,33 +136,74 @@ def create_val_data(x_dat, y_dat):
 
 	return x_dat, y_dat, val_x, val_y
 
-def train(args, x_dat, y_dat):
+def expand_train(x_dat):
 
+	size = len(x_dat[0])
+	for i, dat in enumerate(x_dat):
+		tmp = []
+		p_dat = dat[-18:]
+		for i_1 in range(0, 18-1):
+			for i_2 in range(i_1+1, 18):
+				tmp.append(p_dat[i_1]*p_dat[i_2]*0.001)
+		tmp = np.array(tmp)
+		x_dat[i] = np.append(x_dat[i], tmp)
+		x_dat[i] = np.append(x_dat[i], p_dat*p_dat*0.001)
+
+	return x_dat
+
+def make_batch(x_dat, y_dat, batch_size):
+
+	batch_number = len(x_dat)/batch_size
+	batch_number += 1 if len(x_dat)%batch_size != 0 else 0
+	batch_x = []
+	batch_y = []
+	tmp_x = []
+	tmp_y = []
+	for i, dat in enumerate(x_dat):
+		tmp_x.append(dat)
+		tmp_y.append(y_dat[i])
+		if (i+1)%batch_size == 0:
+			batch_x.append(np.array(tmp_x))
+			batch_y.append(np.array(tmp_y))
+			tmp_x = []
+			tmp_y = []
+	if tmp_x != []:
+		batch_x.append(np.array(tmp_x))
+		batch_y.append(np.array(tmp_y))
+
+	return batch_x, batch_y, batch_number
+
+def train(args, x_dat, y_dat, l):
+
+	x_dat = expand_train(x_dat)
 	x_dat, y_dat, val_x, val_y = create_val_data(x_dat, y_dat)
+	batch_x, batch_y, batch_number = make_batch(x_dat, y_dat, 100)
 
 	train_size = len(x_dat)
 	f_size = len(x_dat[0])
+	print f_size
 	w = np.random.uniform(-.01, .01, (f_size))
 	b = 0.
 	gradsq_w = np.array([1.]*f_size)
 	gradsq_b = 1.
 	cost = 0.
-	Lambda = 0.1
+	Lambda = l
 	eta = args.learning_rate
+	viol = 0
 
 	pre_eout = float('Inf')
 
 	for iters in range(args.iteration):
 		cost = 0.
-		for i, dat in enumerate(x_dat):
-			diff = np.dot(w.T, dat) + b - y_dat[i]
-			cost += 0.5 * diff * diff + 0.5 * Lambda * np.sum(w**2)
+		for i, b_dat in enumerate(batch_x):
+			diff = np.dot(b_dat, w.T).reshape((len(b_dat), 1)) + b - batch_y[i]
+			cost += np.sum(0.5 * diff * diff) + 0.5 * Lambda * np.sum(w**2) * len(b_dat)
 
-			w -= eta * (diff * dat + Lambda * w) / np.sqrt(gradsq_w)
-			b -= eta * diff / math.sqrt(gradsq_b)
+			w -= eta * (np.sum(diff * b_dat, axis=0) + Lambda * w * len(b_dat)) / np.sqrt(gradsq_w)
+			b -= eta * np.sum(diff) / math.sqrt(gradsq_b)
 
-			gradsq_w += eta * (diff * dat + Lambda * w) * eta * (diff * dat + Lambda * w)
-			gradsq_b += eta * diff * eta * diff
+			gradsq_w += (eta * (np.sum(diff * b_dat, axis=0) + Lambda * w * len(b_dat)))**2
+			gradsq_b += eta * np.sum(diff) * eta * np.sum(diff)
 
 		ein = calculate_error(w, b, x_dat, y_dat)
 		eout = calculate_error(w, b, val_x, val_y)
@@ -169,19 +211,27 @@ def train(args, x_dat, y_dat):
 
 		if eout < pre_eout:
 			pre_eout = eout
+			viol = 0
 		else:
-			if iters > 300:
+			viol += 1
+			if iters > 300 and viol > 10:
 				break
 			else:
 				pre_eout = eout
 
-	return w, b
+		ein = calculate_error(w, b, x_dat, y_dat)
+		eout = calculate_error(w, b, val_x, val_y)
+
+		out_str = '['+str(Lambda)+']'+str(ein)+str(eout)+'.csv'
+
+	return w, b, out_str
 
 def test(w, b, t_x_dat):
 
+	t_x_dat = expand_train(t_x_dat)
 	ans = []
 	for dat in t_x_dat:
-		a = np.dot(w.T, dat) + b if np.dot(w.T, dat) + b > 0. else 0.
+		a = np.dot(dat, w.T) + b if np.dot(dat, w.T) + b > 0. else 0.
 		ans.append(float(a))
 
 	return ans
@@ -198,15 +248,23 @@ def main():
 
 	args = parse_args()
 
-	x_dat, y_dat = load_train(args.train_data)
+	lambda_list = [0, 0.0001, 0.001, 0.01, 0.1, 1, 10, 100]
 
-	t_x_dat = load_test(args.test_data)
+	for i in range(10000):
 
-	w, b = train(args, x_dat, y_dat)
+		l = lambda_list[i%len(lambda_list)]
 
-	ans = test(w, b, t_x_dat)
+		x_dat, y_dat = load_train(args.train_data)
 
-	output_ans(args, ans)
+		t_x_dat = load_test(args.test_data)
+
+		w, b, out_str = train(args, x_dat, y_dat, l)
+
+		args.output_file = out_str
+
+		ans = test(w, b, t_x_dat)
+
+		output_ans(args, ans)
 
 if __name__ == '__main__':
 	main()

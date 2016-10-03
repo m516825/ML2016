@@ -8,8 +8,8 @@ import math
 def parse_args():
 	
 	parser = argparse.ArgumentParser()
-	parser.add_argument('--iteration', default=20000, type=int)
-	parser.add_argument('--learning_rate', default=0.000001, type=float)
+	parser.add_argument('--iteration', default=50000, type=int)
+	parser.add_argument('--learning_rate', default=0.00000005, type=float)
 	parser.add_argument('--momentum', default=1, type=int)
 	parser.add_argument('--train_data', default='./data/train.csv', type=str)
 	parser.add_argument('--test_data', default='./data/test_X.csv', type=str)
@@ -177,17 +177,17 @@ def train(args, x_dat, y_dat):
 
 	x_dat = expand_train(x_dat)
 	x_dat, y_dat, val_x, val_y = create_val_data(x_dat, y_dat)
-	batch_x, batch_y, batch_number = make_batch(x_dat, y_dat, 5)
+	batch_x, batch_y, batch_number = make_batch(x_dat, y_dat, 100)
 
 	train_size = len(x_dat)
 	f_size = len(x_dat[0])
 	print f_size
-	w = np.random.uniform(-.001, .001, (f_size))
+	w = np.random.uniform(-.01, .01, (f_size))
 	b = 0.
 	gradsq_w = np.array([1.]*f_size)
 	gradsq_b = 1.
 	cost = 0.
-	Lambda = 1
+	Lambda = 3
 	eta = args.learning_rate
 	viol = 0
 
@@ -238,7 +238,6 @@ def output_ans(args, ans):
 		for i, a in enumerate(ans):
 			out = 'id_'+str(i)+','+str(a)+'\n'
 			f.write(out)
-
 
 def main():
 
