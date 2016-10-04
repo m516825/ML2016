@@ -8,12 +8,12 @@ import math
 def parse_args():
 	
 	parser = argparse.ArgumentParser()
-	parser.add_argument('--iteration', default=10000, type=int)
-	parser.add_argument('--learning_rate', default=0.00000005, type=float)
-	parser.add_argument('--momentum', default=1, type=int)
+	parser.add_argument('--iteration', default=200000, type=int)
+	parser.add_argument('--learning_rate', default=0.00000001, type=float)
+	parser.add_argument('--momentum', default=0, type=int)
 	parser.add_argument('--train_data', default='./data/train.csv', type=str)
 	parser.add_argument('--test_data', default='./data/test_X.csv', type=str)
-	parser.add_argument('--output_file', default='./output.csv', type=str)
+	parser.add_argument('--output_file', default='./kaggle_best.csv', type=str)
 	args = parser.parse_args()
 
 	return args
@@ -147,7 +147,7 @@ def expand_train(x_dat):
 				tmp.append(p_dat[i_1]*p_dat[i_2]*0.001)
 		tmp = np.array(tmp)
 		x_dat[i] = np.append(x_dat[i], tmp)
-		x_dat[i] = np.append(x_dat[i], p_dat*p_dat*0.001)
+		x_dat[i] = np.append(x_dat[i], dat*dat*0.001)
 
 	return x_dat
 
@@ -173,7 +173,7 @@ def make_batch(x_dat, y_dat, batch_size):
 
 	return batch_x, batch_y, batch_number
 
-def train(args, x_dat, y_dat, l):
+def train(args, x_dat, y_dat):
 
 	x_dat = expand_train(x_dat)
 	x_dat, y_dat, val_x, val_y = create_val_data(x_dat, y_dat)
@@ -182,25 +182,34 @@ def train(args, x_dat, y_dat, l):
 	train_size = len(x_dat)
 	f_size = len(x_dat[0])
 	print f_size
-	w = np.random.uniform(-.01, .01, (f_size))
+	w = np.random.uniform(-.1, .1, (f_size))
 	b = 0.
 	gradsq_w = np.array([1.]*f_size)
 	gradsq_b = 1.
 	cost = 0.
-	Lambda = l
+	Lambda = 0.01
+	m_lambda = 0.8
 	eta = args.learning_rate
 	viol = 0
+
+	mul = 1
+	p = 0
 
 	pre_eout = float('Inf')
 
 	for iters in range(args.iteration):
+		v_w = 0.
+		v_b = 0.
 		cost = 0.
 		for i, b_dat in enumerate(batch_x):
 			diff = np.dot(b_dat, w.T).reshape((len(b_dat), 1)) + b - batch_y[i]
 			cost += np.sum(0.5 * diff * diff) + 0.5 * Lambda * np.sum(w**2) * len(b_dat)
 
-			w -= eta * (np.sum(diff * b_dat, axis=0) + Lambda * w * len(b_dat)) / np.sqrt(gradsq_w)
-			b -= eta * np.sum(diff) / math.sqrt(gradsq_b)
+			v_w = m_lambda * v_w - eta * (np.sum(diff * b_dat, axis=0) + Lambda * w * len(b_dat)) / np.sqrt(gradsq_w)
+			v_b = m_lambda * v_b - eta * np.sum(diff) / math.sqrt(gradsq_b)
+
+			w += v_w
+			b += v_b
 
 			gradsq_w += (eta * (np.sum(diff * b_dat, axis=0) + Lambda * w * len(b_dat)))**2
 			gradsq_b += eta * np.sum(diff) * eta * np.sum(diff)
@@ -212,19 +221,24 @@ def train(args, x_dat, y_dat, l):
 		if eout < pre_eout:
 			pre_eout = eout
 			viol = 0
+			p += 1
+			if p > 50:
+				mul = 1
 		else:
 			viol += 1
-			if iters > 300 and viol > 10:
-				break
+			if iters > 300 and viol > 5:
+				viol = 0
+				p = 0
+				mul *= 2
+				w += np.random.uniform(-1, 1, (f_size)) * train_size * eta * mul
+				b += np.random.uniform(-1, 1) * train_size * eta * mul
+				print '-----------------violate-----------------'
+				if eout >= ein:
+					break
 			else:
 				pre_eout = eout
 
-		ein = calculate_error(w, b, x_dat, y_dat)
-		eout = calculate_error(w, b, val_x, val_y)
-
-		out_str = '['+str(Lambda)+']'+str(ein)+str(eout)+'.csv'
-
-	return w, b, out_str
+	return w, b
 
 def test(w, b, t_x_dat):
 
@@ -248,23 +262,15 @@ def main():
 
 	args = parse_args()
 
-	lambda_list = [0, 0.0001, 0.001, 0.01, 0.1, 1, 10, 100]
+	x_dat, y_dat = load_train(args.train_data)
 
-	for i in range(10000):
+	t_x_dat = load_test(args.test_data)
 
-		l = lambda_list[i%len(lambda_list)]
+	w, b = train(args, x_dat, y_dat)
 
-		x_dat, y_dat = load_train(args.train_data)
+	ans = test(w, b, t_x_dat)
 
-		t_x_dat = load_test(args.test_data)
-
-		w, b, out_str = train(args, x_dat, y_dat, l)
-
-		args.output_file = out_str
-
-		ans = test(w, b, t_x_dat)
-
-		output_ans(args, ans)
+	output_ans(args, ans)
 
 if __name__ == '__main__':
 	main()
