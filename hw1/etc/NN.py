@@ -211,7 +211,7 @@ def train(args, x_dat, y_dat):
 	f_size = len(x_dat[0])
 	print f_size
 	
-	NN = [f_size, 10, 10, 1]
+	NN = [f_size, 20, 20, 1]
 	layer = len(NN)-1
 	param_w = []
 	param_b = []
