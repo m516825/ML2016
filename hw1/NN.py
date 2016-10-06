@@ -8,11 +8,12 @@ import math
 def parse_args():
 	
 	parser = argparse.ArgumentParser()
-	parser.add_argument('--iteration', default=5000, type=int)
-	parser.add_argument('--learning_rate', default=0.0000005, type=float)
+	parser.add_argument('--iteration', default=10000, type=int)
+	parser.add_argument('--learning_rate', default=0.00000005, type=float)
 	parser.add_argument('--momentum', default=1, type=int)
 	parser.add_argument('--train_data', default='./data/train.csv', type=str)
 	parser.add_argument('--test_data', default='./data/test_X.csv', type=str)
+	parser.add_argument('--m', default=0, type=int)
 	parser.add_argument('--output_file', default='./NN.csv', type=str)
 	args = parser.parse_args()
 
@@ -120,22 +121,18 @@ def sigmoid(x):
 def calculate_error(w, b, x_dat, y_dat, layer):
 
 	size = len(x_dat)
-	error = 0.
-	for i in range(size):
-		# a = w2[0]*(np.dot(x_dat[i], w1[0].T)+b1[0]) + w2[1]*(np.dot(x_dat[i], w1[1].T)+b1[1]) + w2[2]*(np.dot(x_dat[i], w1[2].T)+b1[2]) + b2 
-		a = x_dat[i][None, :].T
-		for l in range(layer):
-			z = np.dot(w[l], a) + b[l]
-			a = sigmoid(z) 
-		error += (a - float(y_dat[i][0]))**2
-	error /= float(size)
+	a = np.array(x_dat).T
+	for l in range(layer):
+		z = np.dot(w[l], a) + b[l]
+		a = sigmoid(z) 
+	error = np.sum((a - np.array(y_dat).T)**2) / float(size)
 
 	return np.sqrt(error)
 
 def create_val_data(x_dat, y_dat):
 
 	size = len(x_dat)
-	val_size = int(size/10)
+	val_size = int(size/1000)
 	val_x = x_dat[-val_size:]
 	val_y = y_dat[-val_size:]
 	x_dat = x_dat[:-val_size]
@@ -154,7 +151,8 @@ def expand_train(x_dat):
 				tmp.append(p_dat[i_1]*p_dat[i_2]*0.001)
 		tmp = np.array(tmp)
 		x_dat[i] = np.append(x_dat[i], tmp)
-		x_dat[i] = np.append(x_dat[i], p_dat*p_dat*0.001)
+		x_dat[i] = np.append(x_dat[i], dat*dat*0.001)
+		x_dat[i] = np.append(x_dat[i], dat*dat*dat*0.0001)
 
 	return x_dat
 
@@ -208,7 +206,7 @@ def train(args, x_dat, y_dat):
 	f_size = len(x_dat[0])
 	print f_size
 	
-	NN = [f_size, 20, 20, 1]
+	NN = [f_size, 10, 10, 1]
 	layer = len(NN)-1
 	param_w = []
 	param_b = []
@@ -226,10 +224,13 @@ def train(args, x_dat, y_dat):
 		param_grad_b.append(gb)
 
 	cost = 0.
+	m_lambda = 0.5
 	Lambda = 1
 	eta = args.learning_rate
 
 	for iters in range(args.iteration):
+		v_w = [0.] * layer
+		v_b = [0.] * layer
 		cost = 0.
 		for i, dat in enumerate(batch_x):
 
@@ -248,11 +249,18 @@ def train(args, x_dat, y_dat):
 			
 			for l in range(layer):
 
-				param_w[l] -= eta * _w[l] / np.sqrt(param_grad_w[l])
-				param_b[l] -= eta * _b[l] / np.sqrt(param_grad_b[l])
+				if args.m == 1:
+					v_w[l] = m_lambda * v_w[l] - eta * _w[l]
+					v_b[l] = m_lambda * v_b[l] - eta * _b[l]
+					param_w[l] += v_w[l]
+					param_b[l] += v_b[l]
 
-				param_grad_w[l] += eta * _w[l] * eta * _w[l]
-				param_grad_b[l] += eta * _b[l] * eta * _b[l]
+				else:
+					param_w[l] -= eta * _w[l] / np.sqrt(param_grad_w[l])
+					param_b[l] -= eta * _b[l] / np.sqrt(param_grad_b[l])
+
+					param_grad_w[l] += eta * _w[l] * eta * _w[l]
+					param_grad_b[l] += eta * _b[l] * eta * _b[l]
 
 		ein = calculate_error(param_w, param_b, x_dat, y_dat, layer)
 		eout = calculate_error(param_w, param_b, val_x, val_y, layer)
