@@ -8,7 +8,7 @@ import math
 def parse_args():
 	
 	parser = argparse.ArgumentParser()
-	parser.add_argument('--iteration', default=10000, type=int)
+	parser.add_argument('--iteration', default=50000, type=int)
 	parser.add_argument('--learning_rate', default=0.00000005, type=float)
 	parser.add_argument('--momentum', default=1, type=int)
 	parser.add_argument('--train_data', default='./data/train.csv', type=str)
@@ -200,10 +200,18 @@ def make_batch(x_dat, y_dat, batch_size):
 
 	return batch_x, batch_y, batch_number
 
+def create_new_f(w, b, x_dat, layer):
 
-def train(args, x_dat, y_dat):
+	a = np.array(x_dat).T
+	for l in range(layer-1):
+		z = np.dot(w[l], a) + b[l]
+		a = sigmoid(z)
 
-	x_dat = expand_train(x_dat)
+	return list(a.T)
+
+def train2(args, x_dat, y_dat):
+
+	# x_dat, y_dat = shuffle(x_dat, y_dat)
 	x_dat, y_dat, val_x, val_y = create_val_data(x_dat, y_dat)
 	batch_x, batch_y, batch_number = make_batch(x_dat, y_dat, 100)
 
@@ -261,16 +269,6 @@ def train(args, x_dat, y_dat):
 					param_w[l] += v_w[l]
 					param_b[l] += v_b[l]
 
-				elif args.m == 2:
-					v_w[l] = (m_lambda * v_w[l] - eta * _w[l]) / np.sqrt(param_grad_w[l])
-					v_b[l] = (m_lambda * v_b[l] - eta * _b[l]) / np.sqrt(param_grad_b[l])
-
-					param_w[l] += v_w[l]
-					param_b[l] += v_b[l]
-
-					param_grad_w[l] += (m_lambda * v_w[l] - eta * _w[l]) * (m_lambda * v_w[l] - eta * _w[l])
-					param_grad_b[l] += (m_lambda * v_b[l] - eta * _b[l]) * (m_lambda * v_b[l] - eta * _b[l])
-
 				else:
 					param_w[l] -= eta * _w[l] / np.sqrt(param_grad_w[l])
 					param_b[l] -= eta * _b[l] / np.sqrt(param_grad_b[l])
@@ -282,11 +280,92 @@ def train(args, x_dat, y_dat):
 		eout = calculate_error(param_w, param_b, val_x, val_y, layer)
 		print >> sys.stderr, 'iters '+str(iters)+', cost >> '+str(cost/float(train_size))+', ein '+str(ein)+', eout '+str(eout)
 
-	return param_w, param_b, layer
+	return param_w, param_b, layer 
+
+
+def train(args, x_dat, y_dat):
+
+	x_dat = expand_train(x_dat)
+	x_dat, y_dat, val_x, val_y = create_val_data(x_dat, y_dat)
+	batch_x, batch_y, batch_number = make_batch(x_dat, y_dat, 100)
+
+	train_size = len(x_dat)
+	f_size = len(x_dat[0])
+	print f_size
+	
+	NN = [f_size, 10, 100, 1]
+	layer = len(NN)-1
+	param_w = []
+	param_b = []
+	param_grad_w = []
+	param_grad_b = []
+
+	for n in range(len(NN)-1):
+		w = np.random.uniform(-.01, .01, (NN[n+1], NN[n]))
+		b = np.random.uniform(-.0, .0, (NN[n+1], 1))
+		gw = np.ones((NN[n+1], NN[n]))
+		gb = np.ones((NN[n+1], 1))
+		param_w.append(w)
+		param_b.append(b)
+		param_grad_w.append(gw)
+		param_grad_b.append(gb)
+
+	cost = 0.
+	m_lambda = 0.5
+	Lambda = 1
+	eta = args.learning_rate
+	decrease = 1
+
+	for iters in range(args.iteration):
+		v_w = [0.] * layer
+		v_b = [0.] * layer
+		cost = 0.
+		for i, dat in enumerate(batch_x):
+
+			param_a = []
+			# a = dat[None, :].T
+			a = dat
+			param_a.append(a)
+			for l in range(layer):
+				z = np.dot(param_w[l], a) + param_b[l]
+				a = sigmoid(z)
+				param_a.append(a)
+			diff = a - batch_y[i]
+			cost += np.sum(0.5 * diff * diff)
+
+			_w, _b = back_prop(param_w, param_b, param_a, layer, batch_y[i]) 
+			
+			for l in range(layer):
+
+				if args.m == 1:
+					v_w[l] = m_lambda * v_w[l] - eta * _w[l]
+					v_b[l] = m_lambda * v_b[l] - eta * _b[l]
+					param_w[l] += v_w[l]
+					param_b[l] += v_b[l]
+
+				else:
+					param_w[l] -= eta * _w[l] / np.sqrt(param_grad_w[l])
+					param_b[l] -= eta * _b[l] / np.sqrt(param_grad_b[l])
+
+					param_grad_w[l] += eta * _w[l] * eta * _w[l]
+					param_grad_b[l] += eta * _b[l] * eta * _b[l]
+
+		ein = calculate_error(param_w, param_b, x_dat, y_dat, layer)
+		eout = calculate_error(param_w, param_b, val_x, val_y, layer)
+		print >> sys.stderr, 'iters '+str(iters)+', cost >> '+str(cost/float(train_size))+', ein '+str(ein)+', eout '+str(eout)
+		if ein <= 5.7:
+			break
+
+	new_x_dat = create_new_f(param_w, param_b, x_dat, layer)
+	print 'enter second stage !!!!!!'
+	_param_w, _param_b, _layer = train2(args, new_x_dat, y_dat)
+
+
+	return param_w, param_b, layer, _param_w, _param_b, _layer
 
 def test(w, b, t_x_dat, layer):
 
-	t_x_dat = expand_train(t_x_dat)
+	# t_x_dat = expand_train(t_x_dat)
 	ans = []
 	for dat in t_x_dat:
 		# a = w2[0]*(np.dot(dat, w1[0].T)+b1[0]) + w2[1]*(np.dot(dat, w1[1].T)+b1[1]) + w2[2]*(np.dot(dat, w1[2].T)+b1[2]) + b2 
@@ -315,9 +394,12 @@ def main():
 
 	t_x_dat = load_test(args.test_data)
 
-	param_w, param_b, layer = train(args, x_dat, y_dat)
+	param_w, param_b, layer, _param_w, _param_b, _layer = train(args, x_dat, y_dat)
 
-	ans = test(param_w, param_b, t_x_dat, layer)
+	t_x_dat = expand_train(t_x_dat)
+	new_t_x_dat = create_new_f(param_w, param_b, t_x_dat, layer)
+
+	ans = test(_param_w, _param_b, new_t_x_dat, _layer)
 
 	output_ans(args, ans)
 
