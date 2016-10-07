@@ -9,7 +9,7 @@ def parse_args():
 	
 	parser = argparse.ArgumentParser()
 	parser.add_argument('--iteration', default=10000, type=int)
-	parser.add_argument('--learning_rate', default=0.00000005, type=float)
+	parser.add_argument('--learning_rate', default=0.00001, type=float)
 	parser.add_argument('--momentum', default=1, type=int)
 	parser.add_argument('--train_data', default='./data/train.csv', type=str)
 	parser.add_argument('--test_data', default='./data/test_X.csv', type=str)
@@ -140,6 +140,21 @@ def create_val_data(x_dat, y_dat):
 
 	return x_dat, y_dat, val_x, val_y
 
+def feature_scaling(x_dat):
+
+	size = len(x_dat[0])
+	mean = np.sum(np.array(x_dat), axis=0) / size
+	driva = np.array([0.]*size)
+	for i, dat in enumerate(x_dat):
+		driva += (dat - mean)**2
+	driva /= size
+	driva = np.sqrt(driva)
+
+	for i, dat in enumerate(x_dat):
+		x_dat[i] = (x_dat[i] - mean)/driva
+
+	return x_dat
+
 def expand_train(x_dat):
 
 	size = len(x_dat[0])
@@ -153,11 +168,13 @@ def expand_train(x_dat):
 		p_dat = dat[-18:]
 		for i_1 in range(0, 18-1):
 			for i_2 in range(i_1+1, 18):
-				tmp.append(p_dat[i_1]*p_dat[i_2]*0.001)
+				tmp.append(p_dat[i_1]*p_dat[i_2])
 		tmp = np.array(tmp)
-		x_dat[i] = np.append(x_dat[i], tmp)
-		x_dat[i] = np.append(x_dat[i], dat*dat*0.001)
+		x_dat[i] = np.append(x_dat[i], tmp*0.01)
+		x_dat[i] = np.append(x_dat[i], dat*dat*0.01)
 		x_dat[i] = np.append(x_dat[i], dat*time*0.1)
+
+	x_dat = feature_scaling(x_dat)
 
 	return x_dat
 
