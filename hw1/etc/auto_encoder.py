@@ -9,7 +9,7 @@ def parse_args():
 	
 	parser = argparse.ArgumentParser()
 	parser.add_argument('--iteration', default=10000, type=int)
-	parser.add_argument('--learning_rate', default=1e-5, type=float)
+	parser.add_argument('--learning_rate', default=3e-4, type=float)
 	parser.add_argument('--momentum', default=1, type=int)
 	parser.add_argument('--train_data', default='./data/train.csv', type=str)
 	parser.add_argument('--test_data', default='./data/test_X.csv', type=str)
@@ -125,7 +125,7 @@ def calculate_error(w, b, x_dat, y_dat, layer):
 	for l in range(layer):
 		z = np.dot(w[l], a) + b[l]
 		a = sigmoid(z) if l != layer-1 else z
-	error = np.sum((a - np.array(y_dat).T)**2) / float(size)
+	error = ((a - np.array(y_dat).T)**2).sum() / float(size)
 
 	return np.sqrt(error)
 
@@ -171,11 +171,11 @@ def expand_train(x_dat):
 			for i_2 in range(i_1+1, 18):
 				tmp.append(p_dat[i_1]*p_dat[i_2])
 		tmp = np.array(tmp)
-		x_dat[i] = np.append(x_dat[i], tmp)
-		x_dat[i] = np.append(x_dat[i], dat*dat)
-		x_dat[i] = np.append(x_dat[i], dat*time)
+		# x_dat[i] = np.append(x_dat[i], tmp)
+		# x_dat[i] = np.append(x_dat[i], dat*dat)
+		# x_dat[i] = np.append(x_dat[i], dat*time)
 
-	x_dat = feature_scaling(x_dat)
+	# x_dat = feature_scaling(x_dat)
 
 	return x_dat
 
@@ -189,7 +189,8 @@ def back_prop(param_w, param_b, param_a, param_z, layer, y_dat, Lambda):
 
 	for l in range(layer-1, -1, -1):
 		if l == layer-1:
-			theta[l] = 1 * (param_a[l+1] - y_dat) + Lambda * w_sum
+			theta[l] = 1 * param_a[l+1] - y_dat + Lambda * w_sum
+			# print theta[l]
 		else:
 			theta[l] = (1 - sigmoid(param_z[l])) * sigmoid(param_z[l]) * np.dot(param_w[l+1].T, theta[l+1])
 
@@ -226,13 +227,13 @@ def train(args, x_dat, y_dat):
 
 	x_dat = expand_train(x_dat)
 	# x_dat, y_dat, val_x, val_y = create_val_data(x_dat, y_dat)
-	batch_x, batch_y, batch_number = make_batch(x_dat, y_dat, 100)
+	batch_x, batch_y, batch_number = make_batch(x_dat, y_dat, 300)
 
 	train_size = len(x_dat)
 	f_size = len(x_dat[0])
 	print f_size
 	
-	NN = [f_size, 10, 10, 1]
+	NN = [f_size, 10, 2, 10, f_size]
 	layer = len(NN)-1
 	param_w = []
 	param_b = []
@@ -271,10 +272,10 @@ def train(args, x_dat, y_dat):
 				param_a.append(a)
 				param_z.append(z)
 
-			diff = a - batch_y[i]
-			cost += np.sum(0.5 * diff * diff)
+			diff = a - batch_x[i]
+			cost +=(0.5 * diff * diff).sum()
 
-			_w, _b = back_prop(param_w, param_b, param_a, param_z, layer, batch_y[i], Lambda) 
+			_w, _b = back_prop(param_w, param_b, param_a, param_z, layer, batch_x[i], Lambda) 
 			
 			for l in range(layer):
 
@@ -301,10 +302,18 @@ def train(args, x_dat, y_dat):
 					param_grad_w[l] += eta * _w[l] * eta * _w[l]
 					param_grad_b[l] += eta * _b[l] * eta * _b[l]
 
-		ein = calculate_error(param_w, param_b, x_dat, y_dat, layer)
+		ein = calculate_error(param_w, param_b, x_dat, x_dat, layer)
 		# eout = calculate_error(param_w, param_b, val_x, val_y, layer)
 		print >> sys.stderr, 'iters '+str(iters)+', cost >> '+str(cost/float(train_size))+', ein '+str(ein)#+', eout '+str(eout)
 
+	a = np.array(x_dat[0])[None, :].T
+	for l in range(layer):
+		z = np.dot(param_w[l], a) + param_b[l]
+		a = sigmoid(z) if l != layer-1 else z
+
+	print x_dat[0]
+	print a
+	sys.exit(0)
 	args.output_file = 'NN_sig, eta['+str(eta)+'],'+'lambda['+str(Lambda)+'],'+'Ein['+str(ein)+'].csv'
 
 	return param_w, param_b, layer
