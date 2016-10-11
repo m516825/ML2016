@@ -9,7 +9,7 @@ def parse_args():
 	
 	parser = argparse.ArgumentParser()
 	parser.add_argument('--iteration', default=10000, type=int)
-	parser.add_argument('--learning_rate', default=3e-4, type=float)
+	parser.add_argument('--learning_rate', default=3e-2, type=float)
 	parser.add_argument('--momentum', default=1, type=int)
 	parser.add_argument('--train_data', default='./data/train.csv', type=str)
 	parser.add_argument('--test_data', default='./data/test_X.csv', type=str)
@@ -125,7 +125,7 @@ def calculate_error(w, b, x_dat, y_dat, layer):
 	for l in range(layer):
 		z = np.dot(w[l], a) + b[l]
 		a = sigmoid(z) if l != layer-1 else z
-	error = ((a - np.array(y_dat).T)**2).sum() / float(size)
+	error = ((a - np.array(y_dat).T)**2).sum() / (float(size)*len(x_dat[0]))
 
 	return np.sqrt(error)
 
@@ -143,7 +143,7 @@ def create_val_data(x_dat, y_dat):
 def feature_scaling(x_dat):
 
 	size = len(x_dat[0])
-	mean = np.sum(np.array(x_dat), axis=0) / size
+	mean = np.mean(np.array(x_dat), axis=0)
 	driva = np.array([0.]*size)
 	for i, dat in enumerate(x_dat):
 		driva += (dat - mean)**2
@@ -175,7 +175,7 @@ def expand_train(x_dat):
 		# x_dat[i] = np.append(x_dat[i], dat*dat)
 		# x_dat[i] = np.append(x_dat[i], dat*time)
 
-	# x_dat = feature_scaling(x_dat)
+	x_dat = feature_scaling(x_dat)
 
 	return x_dat
 
