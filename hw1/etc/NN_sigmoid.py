@@ -285,14 +285,14 @@ def train(args, x_dat, y_dat):
 					param_b[l] += v_b[l]
 
 				elif args.m == 2:
-					v_w[l] = (m_lambda * v_w[l] - eta * _w[l]) / np.sqrt(param_grad_w[l])
-					v_b[l] = (m_lambda * v_b[l] - eta * _b[l]) / np.sqrt(param_grad_b[l])
+					v_w[l] = m_lambda * v_w[l] - eta * _w[l] / np.sqrt(param_grad_w[l])
+					v_b[l] = m_lambda * v_b[l] - eta * _b[l] / np.sqrt(param_grad_b[l])
 
 					param_w[l] += v_w[l]
 					param_b[l] += v_b[l]
 
-					param_grad_w[l] += (m_lambda * v_w[l] - eta * _w[l]) * (m_lambda * v_w[l] - eta * _w[l])
-					param_grad_b[l] += (m_lambda * v_b[l] - eta * _b[l]) * (m_lambda * v_b[l] - eta * _b[l])
+					param_grad_w[l] += (eta * _w[l]) * (eta * _w[l])
+					param_grad_b[l] += (eta * _b[l]) * (eta * _b[l])
 
 				else:
 					param_w[l] -= eta * _w[l] / np.sqrt(param_grad_w[l])
