@@ -8,7 +8,7 @@ import math
 def parse_args():
 	
 	parser = argparse.ArgumentParser()
-	parser.add_argument('--iteration', default=200000, type=int)
+	parser.add_argument('--iteration', default=20000, type=int)
 	parser.add_argument('--learning_rate', default=0.00000001, type=float)
 	parser.add_argument('--momentum', default=0, type=int)
 	parser.add_argument('--train_data', default='./data/train.csv', type=str)

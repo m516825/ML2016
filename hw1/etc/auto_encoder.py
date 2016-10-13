@@ -8,12 +8,11 @@ import math
 def parse_args():
 	
 	parser = argparse.ArgumentParser()
-	parser.add_argument('--iteration', default=10000, type=int)
-	parser.add_argument('--learning_rate', default=3e-2, type=float)
-	parser.add_argument('--momentum', default=1, type=int)
+	parser.add_argument('--iteration', default=1000, type=int)
+	parser.add_argument('--learning_rate', default=5e-3, type=float)
 	parser.add_argument('--train_data', default='./data/train.csv', type=str)
 	parser.add_argument('--test_data', default='./data/test_X.csv', type=str)
-	parser.add_argument('--m', default=0, type=int)
+	parser.add_argument('--m', default=2, type=int)
 	parser.add_argument('--output_file', default='./NN.csv', type=str)
 	args = parser.parse_args()
 
@@ -125,7 +124,7 @@ def calculate_error(w, b, x_dat, y_dat, layer):
 	for l in range(layer):
 		z = np.dot(w[l], a) + b[l]
 		a = sigmoid(z) if l != layer-1 else z
-	error = ((a - np.array(y_dat).T)**2).sum() / (float(size)*len(x_dat[0]))
+	error = ((a - np.array(y_dat).T)**2).sum() / (float(size))
 
 	return np.sqrt(error)
 
@@ -227,13 +226,13 @@ def train(args, x_dat, y_dat):
 
 	x_dat = expand_train(x_dat)
 	# x_dat, y_dat, val_x, val_y = create_val_data(x_dat, y_dat)
-	batch_x, batch_y, batch_number = make_batch(x_dat, y_dat, 300)
+	batch_x, batch_y, batch_number = make_batch(x_dat, y_dat, 100)
 
 	train_size = len(x_dat)
 	f_size = len(x_dat[0])
 	print f_size
 	
-	NN = [f_size, 10, 2, 10, f_size]
+	NN = [f_size, 20, 2, 20, f_size]
 	layer = len(NN)-1
 	param_w = []
 	param_b = []
@@ -241,7 +240,7 @@ def train(args, x_dat, y_dat):
 	param_grad_b = []
 
 	for n in range(len(NN)-1):
-		w = np.random.uniform(-.01, .01, (NN[n+1], NN[n]))
+		w = np.random.uniform(-.1, .1, (NN[n+1], NN[n]))
 		b = np.random.uniform(-.0, .0, (NN[n+1], 1))
 		gw = np.ones((NN[n+1], NN[n]))
 		gb = np.ones((NN[n+1], 1))
@@ -251,7 +250,7 @@ def train(args, x_dat, y_dat):
 		param_grad_b.append(gb)
 
 	cost = 0.
-	m_lambda = 0.6
+	m_lambda = 0.4
 	Lambda = 0
 	eta = args.learning_rate
 
@@ -311,8 +310,27 @@ def train(args, x_dat, y_dat):
 		z = np.dot(param_w[l], a) + param_b[l]
 		a = sigmoid(z) if l != layer-1 else z
 
-	print x_dat[0]
 	print a
+	print x_dat[0]
+
+	a = np.array(x_dat).T
+	for l in range(layer):
+		z = np.dot(param_w[l], a) + param_b[l]
+		a = sigmoid(z) if l != layer-1 else z
+		if l == 1:
+			break;
+	with open('test.csv', 'w') as f:
+		f.write('x,y,z\n')
+		lis = []
+		for i, dat in enumerate(z.T):
+			lis.append((dat[0], dat[1], y_dat[i][0]))
+			# f.write(str(dat[0])+','+str(dat[1])+','+str(y_dat[i][0])+'\n')
+		lis = sorted(lis, key=lambda (a,b,c):c)
+		for i in lis:
+			f.write(str(i[0])+','+str(i[1])+','+str(i[2])+'\n')
+
+
+
 	sys.exit(0)
 	args.output_file = 'NN_sig, eta['+str(eta)+'],'+'lambda['+str(Lambda)+'],'+'Ein['+str(ein)+'].csv'
 
