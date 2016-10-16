@@ -121,7 +121,7 @@ def logistic_regression(args, train_x, train_y):
 	train_size = len(train_x)
 	f_size = len(train_x[0])
 	
-	NN = [f_size, 5, 5, 1]
+	NN = [f_size, 10, 10, 1]
 	layer = len(NN)-1
 	param_w = []
 	param_b = []
