@@ -10,7 +10,7 @@ def arg_parse():
 	parser.add_argument('--test_dat', default='./spam_data/spam_test.csv', type=str)
 	parser.add_argument('--output_dat', default='./output.csv', type=str)
 	parser.add_argument('--learning_rate', default=1e-4, type=float)
-	parser.add_argument('--iteration', default=5000, type=int)
+	parser.add_argument('--iteration', default=10000, type=int)
 	args = parser.parse_args()
 
 	return args
@@ -56,7 +56,7 @@ def make_batch(x_dat, y_dat, batch_size):
 
 	train_size = len(x_dat)
 	batch_number = train_size/batch_size
-	batch_size += 1 if train_size%batch_size != 0 else 0
+	batch_number += 1 if train_size%batch_size != 0 else 0
 	batch_x = []
 	batch_y = []
 	tmp_x = []
@@ -80,7 +80,7 @@ def logistic_regression(args, train_x, train_y):
 	batch_x, batch_y, batch_number = make_batch(train_x, train_y, 50)
 	train_size = len(train_x)
 	f_size = len(train_x[0])
-	w = np.random.uniform(-.1, .1, (f_size))
+	w = np.random.uniform(-1, 1, (f_size))
 	b = 0.
 	grad_w = np.zeros(f_size) + 1.
 	grad_b = 1.
@@ -114,7 +114,7 @@ def logistic_regression(args, train_x, train_y):
 			grad_b += b_g**2
 
 		ein = count_ein(w, b, train_x, train_y, train_size)
-		print >> sys.stderr, 'Iteration '+str(iters)+', cost : '+str(cost/train_size)+', ein : '+str(ein)
+		print >> sys.stderr, 'Iteration '+str(iters)+', cost : '+str(cost/train_size)+', accurary : '+str(1.-ein)
 
 
 	return w, b
