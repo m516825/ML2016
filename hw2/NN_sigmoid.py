@@ -11,7 +11,7 @@ def arg_parse():
 	parser.add_argument('--test_dat', default='./data/spam_test.csv', type=str)
 	parser.add_argument('--output_dat', default='./NN_output.csv', type=str)
 	parser.add_argument('--learning_rate', default=1e-1, type=float)
-	parser.add_argument('--iteration', default=3000, type=int)
+	parser.add_argument('--iteration', default=1000, type=int)
 	parser.add_argument('--type', default=1, type=int)
 	parser.add_argument('--model', default='./model', type=str)
 	args = parser.parse_args()
