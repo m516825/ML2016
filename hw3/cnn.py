@@ -9,7 +9,7 @@ import progressbar as pb
 
 flags = tf.app.flags
 flags.DEFINE_float('lr', 5e-3, 'Initial learning rate')
-flags.DEFINE_integer('iterations', 1, 'Total training iterations')
+flags.DEFINE_integer('iterations', 250, 'Total training iterations')
 flags.DEFINE_boolean('interactive', False, 'If true, enters an IPython interactive session to play with the trained')
 flags.DEFINE_integer('batch_size', 100, 'batch size for training')
 FLAGS = flags.FLAGS
@@ -207,7 +207,7 @@ def cnn_model(args, data, mtype, self_train, last=False):
 					pred_max = np.amax(soft_max_out, axis=1)
 					args_max = np.argmax(soft_max_out, axis=1)
 					adding = 0
-					topk = accuracy*3000
+					topk = accuracy*2000
 					for pred, _x, label in sorted(zip(pred_max, data.undabel_x, args_max), key=lambda pair:pair[0], reverse=True):
 						if pred > 0.95 and adding <= topk:
 							label_list_x.append(_x)
