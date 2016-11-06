@@ -196,7 +196,7 @@ def cnn_model(args, data, mtype, self_train, last=False):
 
 				print >> sys.stderr, '>>> cost: {}, acc: {}, v_acc: {}'.format(cost, accuracy, v_accuracy)
 
-				if (accuracy-v_accuracy > threshod and accuracy > 0.85 or ite == FLAGS.iterations-1) and not last and len(data.undabel_x) > 0:
+				if (accuracy-v_accuracy > threshod and accuracy > 0.9 or ite == FLAGS.iterations-1) and not last and len(data.undabel_x) > 0:
 					print >> sys.stderr, 'assign unlabel...'
 					np.random.shuffle(data.undabel_x)
 					soft_max_out = sess.run(pred_con, feed_dict={train_x:data.undabel_x, p_keep_dens:1.0})
@@ -222,7 +222,9 @@ def cnn_model(args, data, mtype, self_train, last=False):
 						data.train_y = np.concatenate((data.train_y, np.array(label_list_y)))
 						data.train_size = len(data.train_y)
 						data.undabel_x = np.array(unlabel_list)
+					break
 
+				if last and accuracy > 0.9:
 					break
 
 
