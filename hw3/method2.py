@@ -9,12 +9,12 @@ import progressbar as pb
 
 flags = tf.app.flags
 flags.DEFINE_float('lr', 5e-3, 'Initial learning rate')
-flags.DEFINE_integer('iterations', 1, 'Total training iterations')
+flags.DEFINE_integer('iterations', 400, 'Total training iterations')
 flags.DEFINE_boolean('interactive', False, 'If true, enters an IPython interactive session to play with the trained')
 flags.DEFINE_integer('batch_size', 100, 'batch size for training')
 
-flags.DEFINE_float('s_lr', 1e-3, 'Initial learning rate')
-flags.DEFINE_integer('s_iterations', 0, 'Total training iterations')
+flags.DEFINE_float('s_lr', 5e-4, 'Initial learning rate')
+flags.DEFINE_integer('s_iterations', 100, 'Total training iterations')
 flags.DEFINE_integer('s_batch_size', 100, 'batch size for training')
 FLAGS = flags.FLAGS
 
@@ -22,12 +22,14 @@ class Data(object):
 
 	def __init__(self, label_dat, test_dat, unlabel_dat):
 
-		self.label_data_x, self.label_data_y, self.n_class = self.format_train_data(label_dat[0]), label_dat[1], label_dat[2]
-		self.split_valid(valid=150)
-		self.train_dat_x, self.train_dat_y = self.format_total_data(unlabel_dat[0], unlabel_dat[1])
-		self.train_size = len(self.train_dat_y)
+		if unlabel_dat != None:
+			self.label_data_x, self.label_data_y, self.n_class = self.format_train_data(label_dat[0]), label_dat[1], label_dat[2]
+			self.split_valid(valid=150)
+			self.train_dat_x, self.train_dat_y = self.format_total_data(unlabel_dat[0], unlabel_dat[1])
+			self.train_size = len(self.train_dat_y)
+			self.current = 0
 		self.test_dat_x = self.format_test_data(test_dat)
-		self.current = 0
+		self.n_class = label_dat[2]
 
 	def format_total_data(self, unlabel_dat_x, unlabel_dat_y):
 		train_dat_x = []
@@ -82,13 +84,43 @@ class Data(object):
 
 class Data_semi(object):
 	def __init__(self, label_dat, unlabel_dat, test_dat):
-		self.total_dat = self.combine_data(label_dat, unlabel_dat, test_dat)
+		self.total_dat = self.combine_data_toGray(label_dat, unlabel_dat, test_dat)
 		self.total_size = len(self.total_dat)
 		self.current = 0
+		###########
 		self.unlabel_dat_x = unlabel_dat
 		self.label_dat_x, self.label_data_y, self.n_class = self.format_train_data(label_dat)
+		###########
+		self.gray_unlabel_dat_x = self.unlabel_toGray(unlabel_dat)
+		self.gray_label_data_x = self.label_toGray(label_dat)
+		###########
 		self.test_dat = [dat for dat in test_dat['data']]
 		self.feature_size = len(self.test_dat[0])
+
+	def unlabel_toGray(self, unlabel_dat):
+
+		gray_unlabel_dat_x = []
+		for dat in unlabel_dat:
+			gray_unlabel_dat_x.append(self.toGray(dat))
+
+		return np.array(gray_unlabel_dat_x)
+
+	def label_toGray(self, label_dat):
+
+		gray_label_data_x = []
+		for cat in range(len(label_dat)):
+			for t in range(len(label_dat[cat])):
+				gray_label_data_x.append(self.toGray(label_dat[cat][t]))
+
+		return np.array(gray_label_data_x)
+
+	def toGray(self, array):
+
+		RGB = np.array(array).reshape([-1, 3, 32, 32])
+		gray = (RGB[0][0]*299. + RGB[0][1]*587. + RGB[0][2]*114.+500.) / 1000.
+		gray = gray.reshape([-1])
+
+		return gray
 
 	def format_train_data(self, label_dat):
 
@@ -101,15 +133,15 @@ class Data_semi(object):
 
 		return label_data_x, label_data_y, len(label_dat)
 
-	def combine_data(self, label_dat, unlabel_dat, test_dat):
+	def combine_data_toGray(self, label_dat, unlabel_dat, test_dat):
 
 		total_dat = []
 		for cat in range(len(label_dat)):
 			for t in range(len(label_dat[cat])):
-				total_dat.append(label_dat[cat][t])
+				total_dat.append(self.toGray(label_dat[cat][t]))
 
 		for dat in unlabel_dat:
-			total_dat.append(dat)
+			total_dat.append(self.toGray(dat))
 
 		# for dat in test_dat['data']:
 		# 	total_dat.append(dat)
@@ -250,6 +282,9 @@ def cnn_model(args, data, mtype):
 
 				print >> sys.stderr, '>>> cost: {}, acc: {:.4f}, v_acc: {:.4f}'.format(cost, accuracy, v_accuracy)
 
+				if accuracy > 0.9:
+					break
+
 			# if not os.path.exists("./model"):	
 			# 	os.makedirs("./model")
 			saver.save(sess, './m2_%s.ckpt'%args.model)
@@ -275,7 +310,7 @@ def assign_label(label_x, label_y, unlabel, raw_unlabel):
 	unlabel_dict = {}
 	s_time = time.time()
 	print 'starting!!!!'
-	neigh = NearestNeighbors(n_neighbors=5)
+	neigh = NearestNeighbors(n_neighbors=7)
 	neigh.fit(unlabel) 
 	k_neighbors = neigh.kneighbors(label_x, return_distance=False)
 
@@ -290,7 +325,7 @@ def assign_label(label_x, label_y, unlabel, raw_unlabel):
 
 	for k, v in unlabel_dict.iteritems():
 		label = max(v, key=v.get)
-		if v[label] >= 1 and len(v) == 1:
+		if v[label] >= 2 and len(v) == 1:
 			raw_unlabel_x.append(raw_unlabel[k])
 			unlabel_y.append(label)
 		
@@ -299,7 +334,7 @@ def assign_label(label_x, label_y, unlabel, raw_unlabel):
 	return np.array(raw_unlabel_x), np.array(unlabel_y)
 
 def autoencoder(args, data, mtype):
-	f_size = data.feature_size
+	f_size = data.feature_size/3
 	encoded_feature_train = None
 	encoded_feature_test = None
 
@@ -340,8 +375,8 @@ def autoencoder(args, data, mtype):
 
 		if mtype == 'train':
 
-			tf.initialize_all_variables().run()
-			# saver.restore(sess, './model/%s_encode.ckpt'%args.model)
+			# tf.initialize_all_variables().run()
+			saver.restore(sess, './model/%s_encode.ckpt'%args.model)
 			for ite in range(FLAGS.s_iterations):
 
 				batch_number = data.total_size/FLAGS.s_batch_size
@@ -368,8 +403,8 @@ def autoencoder(args, data, mtype):
 
 		
 		saver.restore(sess, './model/%s_encode.ckpt'%args.model)
-		encoded_feature_label = sess.run(feature, feed_dict={train_x: data.label_dat_x})
-		encoded_feature_unlabel = sess.run(feature, feed_dict={train_x: data.unlabel_dat_x})
+		encoded_feature_label = sess.run(feature, feed_dict={train_x: data.gray_label_data_x})
+		encoded_feature_unlabel = sess.run(feature, feed_dict={train_x: data.gray_unlabel_dat_x})
 		# encoded_feature_test = sess.run(feature, feed_dict={train_x: data.test_dat})
 		unlabel_x, unlabel_y = assign_label(encoded_feature_label, data.label_data_y, encoded_feature_unlabel, data.unlabel_dat_x)
 
@@ -382,9 +417,9 @@ def main(_):
 
 	label_dat, unlabel_dat, test_dat = load_data(args)
 
-	data_semi = Data_semi(label_dat, unlabel_dat, test_dat)
-
 	if args.mtype == 'train':
+
+		data_semi = Data_semi(label_dat, unlabel_dat, test_dat)
 
 		e_train_x, e_test_x, e_unlabel = autoencoder(args, data_semi, mtype='train')
 
@@ -395,7 +430,9 @@ def main(_):
 		cnn_model(args, data, mtype='train')
 
 	else:
-
+		label_dat_formated = (None, None, len(label_dat))
+		e_test_x = [dat for dat in test_dat['data']]
+		data = Data(label_dat_formated, e_test_x, None)
 		cnn_model(args, data, mtype='test')
 
 if __name__ == '__main__':
