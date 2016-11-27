@@ -11,6 +11,13 @@ import progressbar as pb
 import tensorflow as tf
 from sklearn import linear_model
 from re import finditer
+# from sklearn.metrics.pairwise import cosine_similarity
+
+# def new_euclidean_distance(X, Y=None, Y_norm_squared=None, squared=False):
+# 	return 1. - cosine_similarity(X,Y)
+
+# from sklearn.cluster import k_means_
+# k_means_.euclidean_distance = new_euclidean_distance
 
 def arg_parse():
 
